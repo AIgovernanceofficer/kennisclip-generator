@@ -193,21 +193,7 @@ footer a:hover{text-decoration:underline;}
     </div>
   </div>
 
-  <div class="btn-row">
-    <button class="btn btn-outline" id="preview-btn" onclick="previewSpeech()" disabled>🔊 Test stem</button>
-    <button class="btn btn-primary" id="play-btn" onclick="playClip()" disabled>▶ Afspelen</button>
-    <button class="btn btn-stop" id="stop-btn" onclick="stopClip()" style="display:none">⏹ Stoppen</button>
-  </div>
-  <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-    <button class="btn btn-primary" id="download-video-btn" onclick="downloadVideo()" disabled
-      style="background:linear-gradient(135deg,#a81f3d,#7a0f28);box-shadow:0 6px 18px rgba(160,30,60,.35);">
-      🎬 Download als video (.mp4)
-    </button>
-    <button class="btn btn-export" id="export-btn" onclick="exportPresentation()" disabled>💾 Exporteer als slides (.html)</button>
-  </div>
-  <div id="browser-warn" style="display:none;font-size:12px;color:#b03010;margin-top:6px;">⚠️ Videodowload vereist Google Chrome of Microsoft Edge (versie 94+).</div>
-  <div id="rec-hint" style="display:none;font-size:12.5px;color:var(--ink-m);margin-top:6px;">📋 Klik in het dialoogvenster op <b>"Dit tabblad delen"</b> en dan <b>"Delen"</b> om de opname te starten.</div>
-  <div id="status"></div>
+
 </div>
 
 <!-- RIGHT: canvas preview -->
@@ -226,6 +212,23 @@ footer a:hover{text-decoration:underline;}
       Klik <b>Download als video</b> om de kennisclip direct als MP4 op te slaan. Het "Exporteer als slides"-bestand is handig als reserveoptie voor andere software.
     </p>
   </div>
+
+  <div class="btn-row" style="margin-top:6px;">
+    <button class="btn btn-outline" id="preview-btn" onclick="previewSpeech()" disabled>🔊 Test stem</button>
+    <button class="btn btn-primary" id="play-btn" onclick="playClip()" disabled>▶ Afspelen</button>
+    <button class="btn btn-stop" id="stop-btn" onclick="stopClip()" style="display:none">⏹ Stoppen</button>
+  </div>
+  <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+    <button class="btn btn-primary" id="download-video-btn" onclick="downloadVideo()" disabled
+      style="background:linear-gradient(135deg,#a81f3d,#7a0f28);box-shadow:0 6px 18px rgba(160,30,60,.35);">
+      🎬 Download als video (.mp4)
+    </button>
+    <button class="btn btn-export" id="export-btn" onclick="exportPresentation()" disabled>💾 Exporteer als slides (.html)</button>
+  </div>
+  <div id="browser-warn" style="display:none;font-size:12px;color:#b03010;margin-top:6px;">⚠️ Videodowload vereist Google Chrome of Microsoft Edge (versie 94+).</div>
+  <div id="rec-hint" style="display:none;font-size:12.5px;color:var(--ink-m);margin-top:6px;">📋 Klik in het dialoogvenster op <b>"Dit tabblad delen"</b> en dan <b>"Delen"</b> om de opname te starten.</div>
+  <div id="status" style="margin-top:8px;"></div>
+
 </div>
 </div><!-- /grid -->
 
