@@ -110,6 +110,7 @@ input[type=range]{flex:1;accent-color:var(--terra);cursor:pointer;}
 .info-card li{font-size:13px;color:var(--ink-s);line-height:1.7;}
 .info-card li b{color:var(--terra);}
 
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
 footer{margin-top:40px;text-align:center;color:var(--ink-m);font-size:13px;line-height:1.7;}
 footer a{color:var(--terra);text-decoration:none;font-weight:600;}
 footer a:hover{text-decoration:underline;}
@@ -127,14 +128,18 @@ footer a:hover{text-decoration:underline;}
 
 <div class="hero">
   <h1>Kennisclip <span>Generator</span></h1>
-  <p>Maak een educatieve gesproken presentatie vanuit een Word-document — kies taal en stem, beluister de preview, en exporteer als presentatiebestand voor opname.</p>
+  <p>Maak een educatieve gesproken presentatie vanuit een Word-document — kies taal en stem, beluister de preview, en download als video.</p>
+  <p style="font-size:13.5px;color:var(--ink-m);margin-top:-4px;line-height:1.6;">
+    🔒 Spraaksynthese via <strong>Web Speech API</strong> (Microsoft/Google Neural TTS, ingebouwd in de browser) — tekst en audio verlaten nooit je apparaat; alles wordt lokaal verwerkt.
+    &nbsp;·&nbsp; Word-bestanden gelezen door <strong>Mammoth.js</strong> — ook volledig lokaal.
+  </p>
 </div>
 
 <div class="grid">
 <!-- LEFT: input + settings -->
 <div>
   <div class="card">
-    <h3><span class="ic">📄</span> Script</h3>
+    <h3 style="display:flex;align-items:center;justify-content:space-between;"><span><span class="ic">📄</span> Script</span><button class="btn btn-outline" onclick="clearScript()" style="font-size:12px;padding:6px 14px;border-radius:50px;">✕ Wissen</button></h3>
     <input type="file" id="file-input" accept=".docx" style="display:none">
     <div id="fname" style="display:none" class="fname">📄 <span id="fname-text"></span></div>
     <div class="dropzone" id="dropzone">
@@ -193,9 +198,15 @@ footer a:hover{text-decoration:underline;}
     <button class="btn btn-primary" id="play-btn" onclick="playClip()" disabled>▶ Afspelen</button>
     <button class="btn btn-stop" id="stop-btn" onclick="stopClip()" style="display:none">⏹ Stoppen</button>
   </div>
-  <div style="margin-top:10px;">
-    <button class="btn btn-export" id="export-btn" onclick="exportPresentation()" disabled>💾 Exporteer als presentatie (.html)</button>
+  <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+    <button class="btn btn-primary" id="download-video-btn" onclick="downloadVideo()" disabled
+      style="background:linear-gradient(135deg,#a81f3d,#7a0f28);box-shadow:0 6px 18px rgba(160,30,60,.35);">
+      🎬 Download als video (.mp4)
+    </button>
+    <button class="btn btn-export" id="export-btn" onclick="exportPresentation()" disabled>💾 Exporteer als slides (.html)</button>
   </div>
+  <div id="browser-warn" style="display:none;font-size:12px;color:#b03010;margin-top:6px;">⚠️ Videodowload vereist Google Chrome of Microsoft Edge (versie 94+).</div>
+  <div id="rec-hint" style="display:none;font-size:12.5px;color:var(--ink-m);margin-top:6px;">📋 Klik in het dialoogvenster op <b>"Dit tabblad delen"</b> en dan <b>"Delen"</b> om de opname te starten.</div>
   <div id="status"></div>
 </div>
 
@@ -203,12 +214,16 @@ footer a:hover{text-decoration:underline;}
 <div>
   <div class="card">
     <h3><span class="ic">👁️</span> Voorbeeld dia</h3>
+    <div id="rec-indicator" style="display:none;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;font-weight:700;color:#c01030;">
+      <div style="width:12px;height:12px;border-radius:50%;background:#e03030;animation:pulse 1s infinite;flex-shrink:0;"></div>
+      Opname actief…
+    </div>
     <div id="preview-wrap">
       <canvas id="preview-canvas" width="1280" height="720"></canvas>
       <div class="canvas-overlay" id="canvas-overlay">Upload een script om<br>het voorbeeld te zien</div>
     </div>
     <p style="font-size:12px;color:var(--ink-m);margin:10px 0 0;line-height:1.6;">
-      De <b>exporteer</b>-knop maakt een zelfstandig HTML-presentatiebestand. Open het in Chrome of Edge, klik Start, en neem het scherm op met bijv. Windows Game Bar (Win+G), OBS of Teams-opname.
+      Klik <b>Download als video</b> om de kennisclip direct als MP4 op te slaan. Het "Exporteer als slides"-bestand is handig als reserveoptie voor andere software.
     </p>
   </div>
 </div>
@@ -409,6 +424,11 @@ function updateButtons() {
   document.getElementById('preview-btn').disabled = !hasText;
   document.getElementById('play-btn').disabled = !hasText || words > 1000;
   document.getElementById('export-btn').disabled = !hasText;
+  const canVideo = !hasText || words > 1000;
+  document.getElementById('download-video-btn').disabled = canVideo;
+  // Show browser warning if getDisplayMedia not available
+  const noSupport = !navigator.mediaDevices?.getDisplayMedia;
+  document.getElementById('browser-warn').style.display = (hasText && noSupport) ? '' : 'none';
 }
 
 // ─── File upload ──────────────────────────────────────────────────────────────
@@ -662,6 +682,130 @@ document.addEventListener('keydown',e=>{ if(e.code==='Escape'){ playing=false; s
 }
 
 function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ─── Video Download via Tab Capture ──────────────────────────────────────────
+async function downloadVideo() {
+  if (paragraphs.length === 0) return;
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    document.getElementById('browser-warn').style.display = '';
+    setStatus('❌ Videodowload werkt alleen in Chrome of Edge (versie 94+).', 'err');
+    return;
+  }
+  // Show instruction hint before dialog opens
+  const hint = document.getElementById('rec-hint');
+  hint.style.display = '';
+  setStatus('<span class="pill pill-play">📋 Dialoogvenster geopend — klik op "Dit tabblad delen" en dan "Delen"…</span>', 'raw');
+  await new Promise(r => setTimeout(r, 200));
+
+  let displayStream;
+  try {
+    displayStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { displaySurface: 'browser', frameRate: 30 },
+      audio: { suppressLocalAudioPlayback: false },
+      preferCurrentTab: true,
+      selfBrowserSurface: 'include',
+      monitorTypeSurfaces: 'exclude',
+    });
+  } catch (e) {
+    hint.style.display = 'none';
+    setStatus('❌ Geannuleerd. Klik op "Dit tabblad delen" in het dialoogvenster.', 'err');
+    return;
+  }
+  hint.style.display = 'none';
+
+  // Prefer MP4 (Chrome 130+), fall back to WebM
+  let mimeType = 'video/webm;codecs=vp9,opus';
+  let videoExt = 'webm';
+  if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')) {
+    mimeType = 'video/mp4;codecs=avc1,mp4a.40.2'; videoExt = 'mp4';
+  } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+    mimeType = 'video/mp4'; videoExt = 'mp4';
+  }
+  const recorder = new MediaRecorder(displayStream, { mimeType, videoBitsPerSecond: 4000000 });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data?.size > 0) chunks.push(e.data); };
+  recorder.onstop = () => {
+    displayStream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ttl = (document.getElementById('clip-title').value || 'kennisclip').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_]/g,'');
+    a.href = url; a.download = ttl + '.' + videoExt;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    document.getElementById('rec-indicator').style.display = 'none';
+    document.getElementById('download-video-btn').disabled = false;
+    document.getElementById('play-btn').style.display = '';
+    document.getElementById('stop-btn').style.display = 'none';
+    setStatus('<span class="pill pill-done">✅ Video gedownload als .' + videoExt + '! Controleer je downloadmap.</span>', 'raw');
+  };
+
+  // If user stops sharing manually
+  displayStream.getVideoTracks()[0].onended = () => {
+    if (recorder.state === 'recording') recorder.stop();
+    stopClip();
+  };
+
+  // Small delay so dialog fully dismisses before recording starts
+  await new Promise(r => setTimeout(r, 900));
+
+  recorder.start(200);
+  isPlaying = true;
+  currentSlideIdx = 0;
+  document.getElementById('rec-indicator').style.display = 'flex';
+  document.getElementById('download-video-btn').disabled = true;
+  document.getElementById('play-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = '';
+  document.getElementById('stop-btn').onclick = () => {
+    isPlaying = false;
+    speechSynthesis.cancel();
+    if (recorder.state === 'recording') recorder.stop();
+  };
+  speakAndRecord(0, recorder);
+}
+
+function speakAndRecord(idx, recorder) {
+  if (!isPlaying || idx >= paragraphs.length) {
+    setTimeout(() => {
+      if (recorder.state === 'recording') recorder.stop();
+      stopClip();
+    }, 1200);
+    return;
+  }
+  currentSlideIdx = idx;
+  drawSlide(idx);
+  setStatus('<span class="pill pill-play">🔴 Opname — dia '+(idx+1)+' / '+paragraphs.length+'</span>', 'raw');
+  const utterance = new SpeechSynthesisUtterance(paragraphs[idx]);
+  utterance.voice = getSelectedVoice();
+  utterance.rate = parseFloat(document.getElementById('speed').value);
+  utterance.lang = currentLang === 'nl' ? 'nl-NL' : 'en-GB';
+  utterance.onend = () => { if (isPlaying) setTimeout(() => speakAndRecord(idx+1, recorder), 450); };
+  utterance.onerror = () => { if (isPlaying) speakAndRecord(idx+1, recorder); };
+  speechSynthesis.speak(utterance);
+}
+
+// ─── Clear ───────────────────────────────────────────────────────────────────────
+function clearScript() {
+  stopClip();
+  paragraphs = [];
+  currentSlideIdx = 0;
+  document.getElementById('script-text').value = '';
+  document.getElementById('fname').style.display = 'none';
+  document.getElementById('fname-text').textContent = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('clip-title').value = '';
+  document.getElementById('word-count').textContent = '0';
+  document.getElementById('limit-fill').style.width = '0%';
+  document.getElementById('dur-badge').textContent = '≈ 0 min';
+  document.getElementById('dur-badge').className = 'dur-badge dur-ok';
+  document.getElementById('limit-msg').textContent = 'Aanbevolen: max. 700 woorden (≈ 6 min) voor een ideale kennisclip.';
+  document.getElementById('limit-msg').className = 'limit-msg';
+  document.getElementById('slide-info').textContent = '';
+  document.getElementById('canvas-overlay').classList.remove('hidden');
+  document.getElementById('status').innerHTML = '';
+  drawPlaceholder();
+  updateButtons();
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 drawPlaceholder();
