@@ -110,6 +110,10 @@ input[type=range]{flex:1;accent-color:var(--terra);cursor:pointer;}
 .info-card li{font-size:13px;color:var(--ink-s);line-height:1.7;}
 .info-card li b{color:var(--terra);}
 
+.img-thumb{position:relative;width:74px;height:46px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);box-shadow:0 2px 6px var(--shadow);}
+.img-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.img-thumb .rm{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(168,31,61,.9);color:#fff;border:none;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+.img-thumb .num{position:absolute;bottom:2px;left:3px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
 footer{margin-top:40px;text-align:center;color:var(--ink-m);font-size:13px;line-height:1.7;}
 footer a{color:var(--terra);text-decoration:none;font-weight:600;}
@@ -155,6 +159,28 @@ footer a:hover{text-decoration:underline;}
     </div>
     <div class="limit-msg" id="limit-msg">Aanbevolen: max. 700 woorden (≈ 6 min) voor een ideale kennisclip.</div>
     <div class="slide-count-info" id="slide-info" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="display:flex;align-items:center;justify-content:space-between;"><span><span class="ic">🎞️</span> Achtergrond­video's &amp; beelden <span style="font-size:12px;font-weight:400;color:var(--ink-m);">(optioneel)</span></span><button class="btn btn-outline" onclick="clearImages()" style="font-size:12px;padding:6px 14px;border-radius:50px;">✕ Wissen</button></h3>
+    <p style="font-size:12.5px;color:var(--ink-m);margin:0 0 12px;line-height:1.55;">Voeg korte <b>videofragmenten</b> (of foto's) toe die bij je onderwerp passen — bijvoorbeeld praktijkbeelden. Ze lopen als bewegende achtergrond achter de tekst en wisselen per dia. Zonder media gebruikt de clip de warme standaardachtergrond.</p>
+    <input type="file" id="img-input" accept="video/*,image/*" multiple style="display:none">
+    <div class="dropzone" id="img-dropzone" style="padding:16px;">
+      <span class="ic" style="font-size:22px;">🎞️</span>
+      Sleep <b>video's of afbeeldingen</b> hierheen, of <span class="link" onclick="document.getElementById('img-input').click()">klik om te bladeren</span>
+    </div>
+    <div id="img-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
+
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--ink-s);margin-bottom:6px;">🔎 Zoek passende praktijkbeelden</div>
+      <p style="font-size:12px;color:var(--ink-m);margin:0 0 10px;line-height:1.55;">De tool haalt automatisch trefwoorden uit je script. Pas ze gerust aan, zoek gratis rechtenvrije video's, download de mooiste en sleep ze hierboven naar binnen.</p>
+      <input type="text" id="keyword-input" placeholder="Trefwoorden verschijnen hier…" style="width:100%;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="detectKeywords()" style="font-size:12.5px;padding:8px 14px;">✨ Trefwoorden uit tekst</button>
+        <button class="btn btn-outline" onclick="searchStock('pexels')" style="font-size:12.5px;padding:8px 14px;">Pexels ↗</button>
+        <button class="btn btn-outline" onclick="searchStock('pixabay')" style="font-size:12.5px;padding:8px 14px;">Pixabay ↗</button>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -276,58 +302,89 @@ function drawSlide(paraIdx) {
   const para = paragraphs[paraIdx] || '';
   const total = paragraphs.length;
   const progress = total > 0 ? (paraIdx + 1) / total : 0;
+  const hasImg = backgroundMedia.length > 0;
 
-  // Background gradient
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#fff8f3'); bg.addColorStop(.5, '#fff2e6'); bg.addColorStop(1, '#fff0de');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  if (hasImg) {
+    // Background media (video frame or photo), cycling per slide
+    const bg = backgroundMedia[paraIdx % backgroundMedia.length];
+    if (bg.type === 'video' && bg.video && bg.video.readyState >= 2) {
+      drawCover(bg.video, bg.video.videoWidth, bg.video.videoHeight);
+    } else if (bg.type === 'image' && bg.img) {
+      ctx.drawImage(bg.img, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = '#2a1a10'; ctx.fillRect(0,0,W,H);
+    }
+    // Readability overlay — darker at top & bottom
+    const ov = ctx.createLinearGradient(0, 0, 0, H);
+    ov.addColorStop(0, 'rgba(40,25,15,.62)');
+    ov.addColorStop(.42, 'rgba(40,25,15,.42)');
+    ov.addColorStop(.62, 'rgba(40,25,15,.46)');
+    ov.addColorStop(1, 'rgba(40,25,15,.72)');
+    ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
+  } else {
+    // Warm gradient
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#fff8f3'); bg.addColorStop(.5, '#fff2e6'); bg.addColorStop(1, '#fff0de');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    [[200,120,350,'rgba(252,217,192,.45)'],[1100,100,300,'rgba(252,235,194,.35)'],[640,680,400,'rgba(247,201,184,.3)']].forEach(([cx,cy,r,col])=>{
+      const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      g.addColorStop(0,col); g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    });
+  }
 
-  // Warm glow blobs
-  [[200,120,350,'rgba(252,217,192,.45)'],[1100,100,300,'rgba(252,235,194,.35)'],[640,680,400,'rgba(247,201,184,.3)']].forEach(([cx,cy,r,col])=>{
-    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
-    g.addColorStop(0,col); g.addColorStop(1,'transparent');
-    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-  });
+  const txtCol = hasImg ? '#ffffff' : '#3a2417';
+  const brandCol = hasImg ? '#ffe0c0' : '#d96b2d';
+  const counterCol = hasImg ? 'rgba(255,255,255,.85)' : '#a08a76';
 
   // Top line accent
   const tl = ctx.createLinearGradient(0,0,W,0);
   tl.addColorStop(0,'#d96b2d'); tl.addColorStop(1,'#c98a10');
   ctx.fillStyle = tl; ctx.fillRect(0, 0, W, 6);
 
+  // text shadow helper for readability over photos
+  function shadow(on){ if(on){ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=12;ctx.shadowOffsetY=2;}else{ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;} }
+
   // Title (top left)
+  shadow(hasImg);
   ctx.font = 'bold 38px Georgia, serif';
-  ctx.fillStyle = '#3a2417';
+  ctx.fillStyle = txtCol;
   ctx.textAlign = 'left';
   ctx.fillText(title.length > 55 ? title.slice(0,54)+'…' : title, 60, 70);
 
   // Branding (top right)
-  ctx.font = '22px Arial, sans-serif';
-  ctx.fillStyle = '#d96b2d';
+  ctx.font = 'bold 22px Arial, sans-serif';
+  ctx.fillStyle = brandCol;
   ctx.textAlign = 'right';
   ctx.fillText('AIGovernanceofficer.nl', W - 50, 56);
+  shadow(false);
 
-  // Divider
-  ctx.strokeStyle = '#f0d8c0'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(50, 90); ctx.lineTo(W-50, 90); ctx.stroke();
+  // Divider (only on gradient bg)
+  if (!hasImg) {
+    ctx.strokeStyle = '#f0d8c0'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(50, 90); ctx.lineTo(W-50, 90); ctx.stroke();
+  }
 
   // Main paragraph text — centered, large
+  shadow(hasImg);
   ctx.font = '36px Georgia, serif';
-  ctx.fillStyle = '#3a2417';
+  ctx.fillStyle = txtCol;
   ctx.textAlign = 'center';
   const lines = wrapText(ctx, para, W - 160);
   const lh = 54;
   const textH = lines.length * lh;
   const startY = (H - textH) / 2 + 20;
   lines.forEach((l, i) => ctx.fillText(l, W/2, startY + i * lh));
+  shadow(false);
 
   // Slide counter (bottom center)
   ctx.font = '24px Arial, sans-serif';
-  ctx.fillStyle = '#a08a76';
+  ctx.fillStyle = counterCol;
   ctx.textAlign = 'center';
   ctx.fillText(`${paraIdx + 1} / ${total}`, W/2, H - 42);
 
   // Progress bar
-  ctx.fillStyle = '#f0e2d2'; ctx.fillRect(0, H-12, W, 12);
+  ctx.fillStyle = hasImg ? 'rgba(255,255,255,.25)' : '#f0e2d2'; ctx.fillRect(0, H-12, W, 12);
   const pb = ctx.createLinearGradient(0,0,W,0);
   pb.addColorStop(0,'#efb13c'); pb.addColorStop(.5,'#d96b2d'); pb.addColorStop(1,'#a81f3d');
   ctx.fillStyle = pb; ctx.fillRect(0, H-12, W*progress, 12);
@@ -348,6 +405,169 @@ function drawPreview() {
   document.getElementById('canvas-overlay').classList.add('hidden');
   drawSlide(currentSlideIdx);
 }
+
+// ─── Keyword extraction & stock search ────────────────────────────────────────
+const STOPWORDS_NL = new Set("de het een en van te dat die in op voor met aan is zijn worden wordt ook maar als om naar door over bij uit dan of deze dit zo nog wel niet geen heeft hebben heb kan kunnen zal zullen moet moeten je jij jou jouw we wij ze zij hun hen haar onze ons men er hier daar want omdat zodat tot tussen onder boven achter voorbij tijdens binnen buiten zowel echter bijvoorbeeld namelijk vooral steeds altijd vaak soms alle veel meer meest andere ander zelf elkaar wat wie welke welk hoe waarom wanneer waar dus toch zelfs alleen wordt waarbij waarmee waardoor hierbij daarbij".split(" "));
+const STOPWORDS_EN = new Set("the a an and or of to in on for with at is are be been being this that these those it its as by from but if then so not no have has had can could will would shall should must you we they their them our us he she his her there here because which what who how why when where also more most other such about into than very just have will your".split(" "));
+
+function extractKeywords(text, lang) {
+  const stop = lang === 'nl' ? STOPWORDS_NL : STOPWORDS_EN;
+  const words = text.toLowerCase()
+    .replace(/[^a-zà-ÿ\s]/gi, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 4 && !stop.has(w) && !STOPWORDS_NL.has(w) && !STOPWORDS_EN.has(w));
+  const freq = {};
+  words.forEach(w => freq[w] = (freq[w] || 0) + 1);
+  return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+}
+
+function detectKeywords() {
+  const text = document.getElementById('script-text').value;
+  if (!text.trim()) { setStatus('Voeg eerst een script toe om trefwoorden te vinden.', 'err'); return; }
+  const kw = extractKeywords(text, currentLang);
+  document.getElementById('keyword-input').value = kw.join(' ');
+  if (kw.length === 0) setStatus('Geen duidelijke trefwoorden gevonden — typ ze zelf in.', 'err');
+}
+
+function searchStock(site) {
+  let q = document.getElementById('keyword-input').value.trim();
+  if (!q) {
+    const text = document.getElementById('script-text').value;
+    q = extractKeywords(text, currentLang).join(' ');
+    document.getElementById('keyword-input').value = q;
+  }
+  if (!q) { setStatus('Geen trefwoorden — typ ze handmatig in het veld.', 'err'); return; }
+  const enc = encodeURIComponent(q);
+  const url = site === 'pexels'
+    ? 'https://www.pexels.com/search/videos/' + enc + '/'
+    : 'https://pixabay.com/videos/search/' + enc + '/';
+  window.open(url, '_blank', 'noopener');
+}
+
+// ─── Background media (video + image) ─────────────────────────────────────────
+let backgroundMedia = [];   // {type:'video'|'image', video?, img?, exportFrame?, url?}
+let rafId = null;
+
+function drawCover(el, ew, eh) {
+  if (!ew || !eh) { return; }
+  const scale = Math.max(W/ew, H/eh);
+  const w = ew*scale, h = eh*scale;
+  ctx.drawImage(el, (W-w)/2, (H-h)/2, w, h);
+}
+
+function hasVideoMedia() { return backgroundMedia.some(m=>m.type==='video'); }
+
+function startRenderLoop() {
+  if (rafId) return;
+  const loop = () => { drawSlide(currentSlideIdx); rafId = requestAnimationFrame(loop); };
+  rafId = requestAnimationFrame(loop);
+}
+function stopRenderLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+
+function resizeImage(file, maxW, maxH, quality) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const im = new Image();
+      im.onload = () => {
+        const c = document.createElement('canvas'); c.width=maxW; c.height=maxH;
+        const cx = c.getContext('2d');
+        const sc = Math.max(maxW/im.width, maxH/im.height);
+        const w = im.width*sc, h = im.height*sc;
+        cx.drawImage(im,(maxW-w)/2,(maxH-h)/2,w,h);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      im.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function captureVideoFrame(video) {
+  try {
+    const c = document.createElement('canvas'); c.width=1280; c.height=720;
+    const cx = c.getContext('2d');
+    const sc = Math.max(1280/video.videoWidth, 720/video.videoHeight);
+    const w = video.videoWidth*sc, h = video.videoHeight*sc;
+    cx.drawImage(video,(1280-w)/2,(720-h)/2,w,h);
+    return c.toDataURL('image/jpeg', 0.8);
+  } catch(e) { return null; }
+}
+
+async function addBackgroundMedia(files) {
+  for (const file of files) {
+    if (file.type.startsWith('video/')) {
+      const url = URL.createObjectURL(file);
+      const v = document.createElement('video');
+      v.src = url; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+      await new Promise(res => { v.onloadeddata = ()=>res(); v.onerror = ()=>res(); });
+      try { await v.play(); } catch(e) {}
+      const exportFrame = captureVideoFrame(v);
+      backgroundMedia.push({ type:'video', video:v, url, exportFrame });
+    } else if (file.type.startsWith('image/')) {
+      const dataUrl = await resizeImage(file, 1280, 720, 0.82);
+      const img = new Image();
+      await new Promise(r => { img.onload = r; img.src = dataUrl; });
+      backgroundMedia.push({ type:'image', img, exportFrame:dataUrl });
+    }
+  }
+  renderMediaThumbs();
+  if (backgroundMedia.length>0) document.getElementById('canvas-overlay').classList.add('hidden');
+  if (hasVideoMedia()) startRenderLoop();
+  else { stopRenderLoop(); drawSlide(currentSlideIdx); }
+}
+
+function renderMediaThumbs() {
+  const wrap = document.getElementById('img-thumbs');
+  wrap.innerHTML = '';
+  backgroundMedia.forEach((m, i) => {
+    const div = document.createElement('div');
+    div.className = 'img-thumb';
+    if (m.type === 'video') {
+      const v = document.createElement('video');
+      v.src = m.url; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true;
+      div.appendChild(v);
+      const tag = document.createElement('div'); tag.className='num'; tag.textContent='🎬 '+(i+1); div.appendChild(tag);
+    } else {
+      const img = document.createElement('img'); img.src = m.exportFrame; div.appendChild(img);
+      const tag = document.createElement('div'); tag.className='num'; tag.textContent=(i+1); div.appendChild(tag);
+    }
+    const rm = document.createElement('button'); rm.className='rm'; rm.textContent='✕';
+    rm.onclick = () => removeMedia(i);
+    div.appendChild(rm);
+    wrap.appendChild(div);
+  });
+}
+
+function removeMedia(i) {
+  const m = backgroundMedia[i];
+  if (m?.url) { try { URL.revokeObjectURL(m.url); } catch(e){} }
+  backgroundMedia.splice(i, 1);
+  renderMediaThumbs();
+  if (hasVideoMedia()) startRenderLoop();
+  else { stopRenderLoop(); drawPreview(); }
+}
+
+function clearImages() {
+  backgroundMedia.forEach(m => { if (m.url) { try { URL.revokeObjectURL(m.url); } catch(e){} } });
+  backgroundMedia = [];
+  document.getElementById('img-input').value = '';
+  document.getElementById('img-thumbs').innerHTML = '';
+  stopRenderLoop();
+  drawPreview();
+}
+
+// Image/video upload wiring
+document.getElementById('img-input').addEventListener('change', async (e) => {
+  await addBackgroundMedia(Array.from(e.target.files));
+});
+const idz = document.getElementById('img-dropzone');
+idz.addEventListener('dragover', e=>{ e.preventDefault(); idz.classList.add('drag'); });
+idz.addEventListener('dragleave', ()=>idz.classList.remove('drag'));
+idz.addEventListener('drop', async e=>{
+  e.preventDefault(); idz.classList.remove('drag');
+  await addBackgroundMedia(Array.from(e.dataTransfer.files));
+});
 
 // ─── Word / Doc reading ────────────────────────────────────────────────────────
 function setScript(text) {
@@ -375,6 +595,9 @@ function processText(text) {
   const words = countWords(text);
   updateCounter(words);
   updateSlideInfo();
+  // auto-suggest keywords (only if field empty)
+  const kwField = document.getElementById('keyword-input');
+  if (kwField && !kwField.value.trim() && paragraphs.length>0) kwField.value = extractKeywords(text, currentLang).join(' ');
   drawPreview();
   updateButtons();
 }
@@ -601,7 +824,8 @@ function exportPresentation() {
   const lang = currentLang;
   const voiceName = document.getElementById('voice-select').value;
   const rate = parseFloat(document.getElementById('speed').value);
-  const html = buildPresentationHTML(paragraphs, title, lang, voiceName, rate);
+  const frames = backgroundMedia.map(m => m.exportFrame).filter(Boolean);
+  const html = buildPresentationHTML(paragraphs, title, lang, voiceName, rate, frames);
   const blob = new Blob([html], {type:'text/html'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -610,8 +834,8 @@ function exportPresentation() {
   setStatus('💾 Presentatiebestand gedownload — open het in Chrome of Edge en neem het scherm op.', 'done');
 }
 
-function buildPresentationHTML(paras, title, lang, preferredVoice, rate) {
-  const data = JSON.stringify({paras,title,lang,preferredVoice,rate});
+function buildPresentationHTML(paras, title, lang, preferredVoice, rate, frames) {
+  const data = JSON.stringify({paras,title,lang,preferredVoice,rate,frames:frames||[]});
   return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -621,7 +845,12 @@ function buildPresentationHTML(paras, title, lang, preferredVoice, rate) {
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;height:100%;background:#fff8f3;font-family:Georgia,'Times New Roman',serif;overflow:hidden;}
-#stage{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#fff8f3 0%,#fff2e6 50%,#fff0de 100%);position:relative;}
+#stage{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#fff8f3 0%,#fff2e6 50%,#fff0de 100%);background-size:cover;background-position:center;position:relative;transition:background-image .4s;}
+#stage.has-img .slide-text,#stage.has-img .clip-title{color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.7);}
+#stage.has-img .counter{color:rgba(255,255,255,.9);}
+#stage.has-img .brand{color:#ffe0c0;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+#img-overlay{position:absolute;inset:0;background:linear-gradient(rgba(40,25,15,.6),rgba(40,25,15,.4) 45%,rgba(40,25,15,.45) 62%,rgba(40,25,15,.72));pointer-events:none;display:none;}
+#stage.has-img #img-overlay{display:block;}
 #stage::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 20% 15%,rgba(252,217,192,.5),transparent 55%),radial-gradient(ellipse 50% 40% at 85% 10%,rgba(252,235,194,.4),transparent 50%);pointer-events:none;}
 .top-bar{position:absolute;top:0;left:0;right:0;height:8px;background:linear-gradient(90deg,#efb13c,#d96b2d,#a81f3d);}
 .clip-title{position:absolute;top:28px;left:50px;font-size:2.2vw;font-weight:bold;color:#3a2417;max-width:70%;}
@@ -639,6 +868,7 @@ html,body{width:100%;height:100%;background:#fff8f3;font-family:Georgia,'Times N
 </head>
 <body>
 <div id="stage">
+  <div id="img-overlay"></div>
   <div class="top-bar"></div>
   <div class="clip-title" id="clip-title-el"></div>
   <div class="brand">AIGovernanceofficer.nl</div>
@@ -656,6 +886,7 @@ const D = ${data};
 let idx=0, playing=false;
 document.getElementById('clip-title-el').textContent = D.title;
 document.getElementById('slide-text').textContent = D.paras[0]||'';
+if(D.frames && D.frames.length){ const st=document.getElementById('stage'); st.classList.add('has-img'); st.style.backgroundImage='url('+D.frames[0]+')'; }
 document.getElementById('counter').textContent = '1 / '+D.paras.length;
 function startClip(){
   document.getElementById('start-overlay').style.display='none';
@@ -666,6 +897,8 @@ function speak(i){
   document.getElementById('slide-text').textContent = D.paras[i];
   document.getElementById('counter').textContent = (i+1)+' / '+D.paras.length;
   document.getElementById('progress-fill').style.width=((i+1)/D.paras.length*100)+'%';
+  const stage = document.getElementById('stage');
+  if(D.frames && D.frames.length){ stage.classList.add('has-img'); stage.style.backgroundImage='url('+D.frames[i % D.frames.length]+')'; }
   const u = new SpeechSynthesisUtterance(D.paras[i]);
   u.rate = D.rate;
   u.lang = D.lang==='nl' ? 'nl-NL' : 'en-GB';
@@ -804,6 +1037,7 @@ function clearScript() {
   document.getElementById('limit-msg').textContent = 'Aanbevolen: max. 700 woorden (≈ 6 min) voor een ideale kennisclip.';
   document.getElementById('limit-msg').className = 'limit-msg';
   document.getElementById('slide-info').textContent = '';
+  const kf = document.getElementById('keyword-input'); if (kf) kf.value='';
   document.getElementById('canvas-overlay').classList.remove('hidden');
   document.getElementById('status').innerHTML = '';
   drawPlaceholder();

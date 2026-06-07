@@ -61,6 +61,37 @@ De tool berekent automatisch de geschatte duur op basis van de spreeksnelheid en
 
 ---
 
+## Achtergrondvideo's en beelden
+
+Je kunt korte **videofragmenten** of foto's toevoegen die als bewegende achtergrond achter de tekst lopen — bijvoorbeeld praktijkbeelden die bij je onderwerp passen. Dit maakt de kennisclip levendiger en aantrekkelijker.
+
+- Sleep een of meer video's (.mp4, .webm) of afbeeldingen naar het media-vak, of klik om te bladeren.
+- De media wisselen automatisch per dia (de eerste video bij dia 1, de tweede bij dia 2, enzovoort; daarna herhalen ze).
+- Over de beelden ligt een lichte donkere laag zodat de tekst goed leesbaar blijft.
+- Zonder media gebruikt de clip de warme standaardachtergrond.
+- In de **MP4-download** lopen de video's mee als bewegend beeld. In het lichtere "Exporteer als slides"-bestand wordt per video automatisch een stilstaand beeld gebruikt, zodat dat bestand klein blijft.
+
+**Automatisch passende beelden zoeken**
+
+De tool kan je helpen zoeken naar passend beeldmateriaal:
+1. Klik op **✨ Trefwoorden uit tekst** — de tool haalt de belangrijkste woorden uit je script.
+2. Pas de trefwoorden eventueel aan in het tekstveld.
+3. Klik op **Pexels ↗** of **Pixabay ↗** — er opent een zoekopdracht met die trefwoorden naar gratis, rechtenvrije video's.
+4. Download de mooiste fragmenten en sleep ze in het media-vak.
+
+De tool kiest dus niet zelf de beelden (dat houdt jou de regie over wat inhoudelijk klopt en welke licentie geldt), maar neemt het zoekwerk grotendeels uit handen.
+
+**Waar vind je gratis, rechtenvrije praktijkbeelden?**
+- [Pexels](https://www.pexels.com/videos/) — gratis video's, vrij te gebruiken
+- [Pixabay](https://pixabay.com/videos/) — gratis video's en foto's
+- [Wikimedia Commons](https://commons.wikimedia.org) — vrij materiaal, let op de licentie
+
+> Houd de fragmenten kort (enkele seconden tot een halve minuut) en let op het gebruiksrecht van het beeldmateriaal.
+
+Ook hier geldt: de media worden **lokaal in je browser** verwerkt en verlaten je apparaat niet.
+
+---
+
 ## Taal en stemkeuze
 
 De beschikbare stemmen zijn afhankelijk van je browser en besturingssysteem.
@@ -126,7 +157,8 @@ Het inlezen van Word-bestanden (.docx) gebeurt via **Mammoth.js**, een open-sour
 - Je Word-bestand en tekst worden **uitsluitend lokaal** in je browser verwerkt.
 - Er wordt niets naar een server gestuurd en niets opgeslagen.
 - De spraaksynthese gebruikt stemmen die al op je apparaat staan — ook die audio verlaat je apparaat niet.
-- Het geëxporteerde presentatiebestand bevat alleen de tekst die jij hebt ingevoerd.
+- Het geëxporteerde presentatiebestand bevat alleen de tekst en beelden die jij hebt ingevoerd.
+- Toegevoegde achtergrondvideo's en -foto's worden lokaal verwerkt en niet geüpload.
 
 ---
 
